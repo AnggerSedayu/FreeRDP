@@ -1,0 +1,41 @@
+name: Windows RDP
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - name: Aktifkan RDP
+      run: |
+        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 1
+        net user runneradmin Password123!
+
+    - name: Tampilkan IP Publik
+      id: getip
+      run: |
+        $ip = (Invoke-WebRequest -UseBasicParsing ifconfig.me).Content
+        echo "IP=$ip" >> $env:GITHUB_ENV
+        echo "IP VPS: $ip"
+
+    - name: Buat file info RDP (txt)
+      run: |
+        echo IP VPS: $env:IP > rdp_info.txt
+        echo Username: runneradmin >> rdp_info.txt
+        echo Password: Password123! >> rdp_info.txt
+
+    - name: Buat file RDP (rdp)
+      run: |
+        echo "full address:s:$env:IP" > windows_vps.rdp
+        echo "username:s:runneradmin" >> windows_vps.rdp
+        echo "prompt for credentials:i:1" >> windows_vps.rdp
+
+    - name: Upload file info & RDP
+      uses: actions/upload-artifact@v3
+      with:
+        name: RDP_Files
+        path: |
+          rdp_info.txt
+          windows_vps.rdp
